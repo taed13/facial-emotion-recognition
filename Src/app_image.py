@@ -132,7 +132,7 @@ def save_to_excel(result_list, faces, image_path, output_path='../Result/result_
     
     # Lưu ảnh dự đoán vào thư mục "predict"
     if save_predicted_images:
-        predict_directory = os.path.join(os.path.dirname(output_path), '../Predict')
+        predict_directory = os.path.join(os.path.dirname(output_path), '../Predict/Predict_Image')
         if not os.path.exists(predict_directory):
             os.makedirs(predict_directory)
             print(f"Predict directory created at {predict_directory}")
