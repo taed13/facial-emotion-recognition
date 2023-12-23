@@ -24,6 +24,8 @@ def detect_emotion(frame, image_path):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_classifier.detectMultiScale(gray, 1.3, 5)  # Adjust the parameters as needed
 
+    result_dict = {}  # Khởi tạo result_dict trước vòng lặp
+
     for (x, y, w, h) in faces:
         # Extract the face ROI
         roi_gray = gray[y:y+h, x:x+w]
@@ -86,12 +88,13 @@ def detect_emotion(frame, image_path):
             'Neutral': f"{round(prediction[emotion_labels.index('Neutral')] * 100, 2)}%",
             'Sad': f"{round(prediction[emotion_labels.index('Sad')] * 100, 2)}%",
             'Surprise': f"{round(prediction[emotion_labels.index('Surprise')] * 100, 2)}%",
-            'Faces': faces
+            'Main Label': main_label,
+            'Main Confidence': main_confidence,
         }
 
-    return result_dict, frame
+    return result_dict, frame, faces
 
-def save_to_excel(result_list, output_path='../Result/result_image.xlsx', save_predicted_images=True):
+def save_to_excel(result_list, faces, image_path, output_path='../Result/result_image.xlsx', save_predicted_images=True):
     # Kiểm tra và tạo thư mục nếu chưa tồn tại
     output_directory = os.path.dirname(output_path)
     if not os.path.exists(output_directory):
@@ -115,42 +118,52 @@ def save_to_excel(result_list, output_path='../Result/result_image.xlsx', save_p
         predict_directory = os.path.join(os.path.dirname(output_path), '../Predict')
         if not os.path.exists(predict_directory):
             os.makedirs(predict_directory)
+            print(f"Predict directory created at {predict_directory}")
 
-        for result in result_list:
-            image_path = result['File name']
+        for i, ((x, y, w, h), result) in enumerate(zip(faces, result_list)):
+            image_path = image_path  # Sử dụng image_path được truyền từ hàm test_on_image
             image = cv2.imread(image_path)
-            faces = result['Faces'] # Lấy giá trị faces từ result_dict
 
-            for (x, y, w, h) in faces:
-                # Vẽ khung bao xung quanh khuôn mặt
-                cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                
-                # Tạo tên file mới dựa trên thời gian và tên file cũ
-                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                _, file_extension = os.path.splitext(os.path.basename(image_path))
-                new_filename = f"predict_{timestamp}{file_extension}"
-                new_file_path = os.path.join(predict_directory, new_filename)
+            # Kiểm tra xem có khuôn mặt được phát hiện không
+            if len(faces) > 0:
+                # Vòng lặp duyệt qua tất cả các khuôn mặt được phát hiện
+                for j, (x, y, w, h) in enumerate(faces):
+                    # Vẽ khung bao xung quanh khuôn mặt
+                    cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-                # Tạo một frame mới để vẽ kết quả
-                frame = image.copy()
+                    # Kiểm tra xem có kết quả cảm xúc cho khuôn mặt này không
+                    if 'Main Label' in result:
+                        # Lấy label của cảm xúc có tỉ lệ nhận dạng cao nhất từ result_dict
+                        main_label = result['Main Label']
+                        main_confidence = result['Main Confidence']
 
-                # Vẽ kết quả lên frame
-                main_label = result['Angry'].split()[0]
-                main_label_position = (x, y - 10)
-                cv2.putText(frame, main_label, main_label_position, cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                        # Tạo tên file mới dựa trên thời gian và tên file cũ
+                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                        _, file_extension = os.path.splitext(os.path.basename(image_path))
+                        new_filename = f"predict_{timestamp}{file_extension}"
+                        new_file_path = os.path.join(predict_directory, new_filename)
 
-                other_labels = [label for label in emotion_labels if label != main_label]
-                for i, other_label in enumerate(other_labels):
-                    # Chuyển đổi giá trị thành số và sau đó làm tròn
-                    other_confidence = round(float(result[other_label].rstrip('%')) * 100, 2)
-                    other_label_text = f"{other_label}: {other_confidence}%"
-                    other_label_position = (x, y + (i + 1) * 20)
-                    cv2.putText(frame, other_label_text, other_label_position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                        # Tạo một frame mới để vẽ kết quả
+                        frame = image.copy()
 
-                # Lưu ảnh dự đoán
-                cv2.imwrite(new_file_path, frame)
+                        # Vẽ kết quả lên frame
+                        main_label_position = (x, y - 10)
+                        cv2.putText(frame, f"{main_label} ({main_confidence}%)", main_label_position,
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-    print(f"Predicted images saved to {predict_directory}")
+                        other_labels = [label for label in emotion_labels if label != main_label]
+                        for k, other_label in enumerate(other_labels):
+                            # Loại bỏ ký tự '%' và sau đó chuyển đổi thành số float
+                            other_confidence_str = result[other_label].rstrip('%')
+                            other_confidence = round(float(other_confidence_str), 2)
+                            other_label_text = f"{other_label}: {other_confidence}%"
+                            other_label_position = (x, y + (k + 1) * 20)
+                            cv2.putText(frame, other_label_text, other_label_position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+                        # Lưu ảnh dự đoán
+                        cv2.imwrite(new_file_path, frame)
+
+        print(f"Predicted images saved to {predict_directory}")
 
 def test_on_image(image_path):
     image = cv2.imread(image_path)
@@ -158,13 +171,13 @@ def test_on_image(image_path):
         print(f"Error: Couldn't read the image at path {image_path}.")
         return
 
-    result_dict, result_frame = detect_emotion(image, image_path)
+    result_dict, result_frame, faces = detect_emotion(image, image_path)
     
     # Lưu kết quả vào danh sách
     result_list = [result_dict]
     
     # Lưu danh sách kết quả vào Excel
-    save_to_excel(result_list)
+    save_to_excel(result_list, faces, image_path)
     
     cv2.imshow("Emotion Recognition", result_frame)
     cv2.waitKey(0)
