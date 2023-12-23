@@ -15,6 +15,7 @@ try:
     face_classifier = cv2.CascadeClassifier('../Model/haarcascade_frontalface_default.xml')  # Face Detection
     classifier_48 = load_model('../Model/model.h5')  # Load model
     classifier_96 = load_model('../Model/model_emotion_face_detection.h5')  # Load model
+    classifier_299 = load_model('../Model/model_v1_inceptionV3.h5')  # Load model
     emotion_labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']  # Emotions to be predicted
 except Exception as e:
     print(f"Error loading cascade classifiers: {e}")
@@ -59,6 +60,22 @@ def detect_emotion(frame, image_path):
 
         # # Make prediction using the new model
         # prediction = classifier_96.predict(roi_color)[0]
+        
+        # =================================      Model Shape (299, 299, 3)      =================================
+        # # Resize the face ROI to match the input size of the model (299, 299, 3)
+        # roi_gray = cv2.resize(roi_gray, (299, 299), interpolation=cv2.INTER_AREA)
+        
+        # # Convert the resized face ROI to RGB
+        # roi_color = cv2.cvtColor(roi_gray, cv2.COLOR_BGR2RGB)
+        
+        # # Normalize the pixels to be in the range [0, 1]
+        # roi_color = roi_color.astype('float') / 255.0
+        
+        # # Expand dimensions to match the input shape of the new model
+        # roi_color = np.expand_dims(roi_color, axis=0)
+
+        # # Make prediction using the new model
+        # prediction = classifier_299.predict(roi_color)[0]
         
         # Display the main emotion
         main_label = emotion_labels[prediction.argmax()]
