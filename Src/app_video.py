@@ -184,12 +184,35 @@ def test_on_video(video_path):
     results_list = []  # List to store all results
     
     # Tạo đường dẫn cho thư mục Predict_Video
-    predict_directory = os.path.join(os.path.dirname(video_path), '../Predict/Predict_Video')
-
+    output_video_dir = os.path.join(os.path.dirname(video_path), '../Predict/Predict_Video')
+    
     # Kiểm tra và tạo thư mục nếu chưa tồn tại
-    if not os.path.exists(predict_directory):
-        os.makedirs(predict_directory)
-        print(f"Created directory: {predict_directory}")
+    if not os.path.exists(output_video_dir):
+        os.makedirs(output_video_dir)
+        print(f"Created directory: {output_video_dir}")
+    
+    # Get the frame size
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Could not read the first frame.")
+        cap.release()
+        return
+
+    frame_height, frame_width, _ = frame.shape
+    
+    # Tạo một đối tượng VideoWriter với tên file có mã thời gian
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    output_video_filename = f'predicted_video_{timestamp}.mp4'
+    output_video_path = os.path.join(output_video_dir, output_video_filename)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Có thể sử dụng 'XVID' hoặc 'MJPG' tùy thuộc vào hệ thống
+    output_video = cv2.VideoWriter(output_video_path, fourcc, 20.0, (frame_width, frame_height))
+    
+    if not output_video.isOpened():
+        print(f"Error: Could not create the output video file at path {output_video_path}.")
+        cap.release()
+        return
+
+    print(f"Creating predicted video at {output_video_path}")
 
     while True:
         ret, frame = cap.read()
@@ -197,8 +220,6 @@ def test_on_video(video_path):
         if not ret:
             print("End of video.")
             break
-
-        frame_height, frame_width, _ = frame.shape
 
         # Detect emotions in the current frame
         current_results_list, result_frame, faces = detect_emotion(frame)
@@ -208,7 +229,8 @@ def test_on_video(video_path):
 
         # Display the frame with emotions detected
         cv2.imshow("Emotion Recognition", result_frame)
-
+        output_video.write(result_frame)
+        
         # Check if the user wants to exit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -219,8 +241,9 @@ def test_on_video(video_path):
     # Save the results to an Excel file
     save_video_results_to_excel(results_list, output_path='../Result/result_video.xlsx')
 
-    # Save predicted images to the Predict_Video directory
-    save_predicted_images(predict_directory, faces, results_list, result_frame)
+    # Giải phóng tài nguyên VideoWriter
+    output_video.release()
+    print(f"Predicted video saved at {os.path.abspath(output_video_path)}")
 
 if __name__ == "__main__":
     # Sử dụng argparse để thêm đối số dòng lệnh

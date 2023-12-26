@@ -32,18 +32,18 @@ def detect_emotion(frame):
         roi_gray = gray[y:y+h, x:x+w]
         
         # =================================      Model Shape (48, 48, 1)      =================================
-        # Resize the face ROI to match the input size of the model (48, 48, 1)
-        roi_gray = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
+        # # Resize the face ROI to match the input size of the model (48, 48, 1)
+        # roi_gray = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
         
-        # Normalize the pixels to be in the range [0, 1]
-        roi_color = roi_gray.astype('float') / 255.0
-        roi_color = img_to_array(roi_color)
+        # # Normalize the pixels to be in the range [0, 1]
+        # roi_color = roi_gray.astype('float') / 255.0
+        # roi_color = img_to_array(roi_color)
         
-        # Expand dimensions to match the input shape of the new model
-        roi_color = np.expand_dims(roi_color, axis=0)
+        # # Expand dimensions to match the input shape of the new model
+        # roi_color = np.expand_dims(roi_color, axis=0)
         
-        # Make prediction using the new model
-        prediction = classifier_48.predict(roi_color)[0]
+        # # Make prediction using the new model
+        # prediction = classifier_48.predict(roi_color)[0]
         
         # =================================      Model Shape (96, 96, 3)      =================================
         # # Resize the face ROI to match the input size of the model (96, 96, 3)
@@ -62,20 +62,20 @@ def detect_emotion(frame):
         # prediction = classifier_96.predict(roi_color)[0]
         
         # =================================      Model Shape (299, 299, 3)      =================================
-        # # Resize the face ROI to match the input size of the model (299, 299, 3)
-        # roi_gray = cv2.resize(roi_gray, (299, 299), interpolation=cv2.INTER_AREA)
+        # Resize the face ROI to match the input size of the model (299, 299, 3)
+        roi_gray = cv2.resize(roi_gray, (299, 299), interpolation=cv2.INTER_AREA)
         
-        # # Convert the resized face ROI to RGB
-        # roi_color = cv2.cvtColor(roi_gray, cv2.COLOR_BGR2RGB)
+        # Convert the resized face ROI to RGB
+        roi_color = cv2.cvtColor(roi_gray, cv2.COLOR_BGR2RGB)
         
-        # # Normalize the pixels to be in the range [0, 1]
-        # roi_color = roi_color.astype('float') / 255.0
+        # Normalize the pixels to be in the range [0, 1]
+        roi_color = roi_color.astype('float') / 255.0
         
-        # # Expand dimensions to match the input shape of the new model
-        # roi_color = np.expand_dims(roi_color, axis=0)
+        # Expand dimensions to match the input shape of the new model
+        roi_color = np.expand_dims(roi_color, axis=0)
 
-        # # Make prediction using the new model
-        # prediction = classifier_299.predict(roi_color)[0]
+        # Make prediction using the new model
+        prediction = classifier_299.predict(roi_color)[0]
 
         # Display the main emotion
         main_label = emotion_labels[prediction.argmax()]
