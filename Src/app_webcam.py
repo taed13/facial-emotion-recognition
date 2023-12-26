@@ -32,18 +32,18 @@ def detect_emotion(frame):
         roi_gray = gray[y:y+h, x:x+w]
         
         # =================================      Model Shape (48, 48, 1)      =================================
-        # # Resize the face ROI to match the input size of the model (48, 48, 1)
-        # roi_gray = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
+        # Resize the face ROI to match the input size of the model (48, 48, 1)
+        roi_gray = cv2.resize(roi_gray, (48, 48), interpolation=cv2.INTER_AREA)
         
-        # # Normalize the pixels to be in the range [0, 1]
-        # roi_color = roi_gray.astype('float') / 255.0
-        # roi_color = img_to_array(roi_color)
+        # Normalize the pixels to be in the range [0, 1]
+        roi_color = roi_gray.astype('float') / 255.0
+        roi_color = img_to_array(roi_color)
         
-        # # Expand dimensions to match the input shape of the new model
-        # roi_color = np.expand_dims(roi_color, axis=0)
+        # Expand dimensions to match the input shape of the new model
+        roi_color = np.expand_dims(roi_color, axis=0)
         
-        # # Make prediction using the new model
-        # prediction = classifier_48.predict(roi_color)[0]
+        # Make prediction using the new model
+        prediction = classifier_48.predict(roi_color)[0]
         
         # =================================      Model Shape (96, 96, 3)      =================================
         # # Resize the face ROI to match the input size of the model (96, 96, 3)
@@ -62,20 +62,20 @@ def detect_emotion(frame):
         # prediction = classifier_96.predict(roi_color)[0]
         
         # =================================      Model Shape (299, 299, 3)      =================================
-        # Resize the face ROI to match the input size of the model (299, 299, 3)
-        roi_gray = cv2.resize(roi_gray, (299, 299), interpolation=cv2.INTER_AREA)
+        # # Resize the face ROI to match the input size of the model (299, 299, 3)
+        # roi_gray = cv2.resize(roi_gray, (299, 299), interpolation=cv2.INTER_AREA)
         
-        # Convert the resized face ROI to RGB
-        roi_color = cv2.cvtColor(roi_gray, cv2.COLOR_BGR2RGB)
+        # # Convert the resized face ROI to RGB
+        # roi_color = cv2.cvtColor(roi_gray, cv2.COLOR_BGR2RGB)
         
-        # Normalize the pixels to be in the range [0, 1]
-        roi_color = roi_color.astype('float') / 255.0
+        # # Normalize the pixels to be in the range [0, 1]
+        # roi_color = roi_color.astype('float') / 255.0
         
-        # Expand dimensions to match the input shape of the new model
-        roi_color = np.expand_dims(roi_color, axis=0)
+        # # Expand dimensions to match the input shape of the new model
+        # roi_color = np.expand_dims(roi_color, axis=0)
 
-        # Make prediction using the new model
-        prediction = classifier_299.predict(roi_color)[0]
+        # # Make prediction using the new model
+        # prediction = classifier_299.predict(roi_color)[0]
 
         # Display the main emotion
         main_label = emotion_labels[prediction.argmax()]
@@ -107,7 +107,7 @@ def detect_emotion(frame):
             'Main Confidence': main_confidence,
         }
         
-        results_list.append(result_dict)
+        results_list.append((result_dict, frame))
 
         # Draw the rectangle around the detected face
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -132,6 +132,36 @@ def save_webcam_results_to_excel(result_list, output_path='../Result/result_webc
     # Lưu DataFrame vào file Excel
     df.to_excel(output_path, index=False)
     print(f"Results saved to {output_path}")
+    
+def save_webcam_video(result_list, output_dir='../Predict/Predict_Webcam'):
+    # Kiểm tra và tạo thư mục nếu chưa tồn tại
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created directory: {output_dir}")
+
+    # Lấy thông tin frame từ kích thước frame đầu tiên
+    frame_height, frame_width, _ = result_list[0][1].shape
+
+    # Tạo đối tượng VideoWriter với tên file có mã thời gian
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    output_filename = f'predicted_webcam_{timestamp}.mp4'
+    output_path = os.path.join(output_dir, output_filename)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Có thể sử dụng 'XVID' hoặc 'MJPG' tùy thuộc vào hệ thống
+    output_video = cv2.VideoWriter(output_path, fourcc, 20.0, (frame_width, frame_height))
+
+    if not output_video.isOpened():
+        print(f"Error: Could not create the output video file at path {output_path}.")
+        return
+
+    print(f"Creating predicted video at {output_path}")
+
+    # Lặp qua danh sách kết quả và ghi vào video
+    for _, frame in result_list:
+        output_video.write(frame)
+
+    # Giải phóng tài nguyên VideoWriter
+    output_video.release()
+    print(f"Predicted video saved at {os.path.abspath(output_path)}")
 
 def main():
     cap = cv2.VideoCapture(0)  # 0 corresponds to the default camera
@@ -152,10 +182,13 @@ def main():
         frame_height, frame_width, _ = frame.shape
 
         # Detect emotions in the current frame
-        current_results_list, result_frame = detect_emotion(frame)
+        current_result, result_frame = detect_emotion(frame)
+        
+        # Save the frame with detected emotions to the result dictionary
+        # current_result['frame'] = result_frame
 
         # Save the results to the overall list
-        results_list.extend(current_results_list)
+        results_list.extend(current_result)
 
         # Display the frame with emotions detected
         cv2.imshow("Emotion Recognition", result_frame)
@@ -169,7 +202,9 @@ def main():
 
     # Save the results to an Excel file
     save_webcam_results_to_excel(results_list, output_path='../Result/result_webcam.xlsx')
+    
+    # Save the video with detected emotions
+    save_webcam_video(results_list, output_dir='../Predict/Predict_Webcam')
 
 if __name__ == "__main__":
     main()
-
